@@ -5,6 +5,7 @@
 use crate::finding::Finding;
 use crate::parse::anchor::Parsed;
 
+mod arbitrary_cpi;
 mod missing_has_one;
 mod missing_signer;
 mod unchecked_account;
@@ -32,6 +33,7 @@ pub fn all_rules() -> Vec<Box<dyn Rule>> {
         Box::new(unchecked_account::UncheckedAccount),
         Box::new(missing_has_one::MissingHasOne),
         Box::new(unchecked_math::UncheckedMath),
+        Box::new(arbitrary_cpi::ArbitraryCpi),
     ]
 }
 
