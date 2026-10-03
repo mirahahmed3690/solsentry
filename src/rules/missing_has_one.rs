@@ -6,11 +6,12 @@
 //!
 //! PRECISION NOTE (v2): token accounts (`TokenAccount` / `Mint` /
 //! `InterfaceAccount`) are validated by the SPL-Token program plus
-//! `token::` / `associated_token` constraints, NOT by `has_one`, so flagging
-//! every mutable token account produces huge false-positive noise on real
-//! programs. We exclude token/mint types and any field already pinned by a
-//! token constraint. What remains is the high-signal case: a mutable *custom*
-//! `Account<'info, MyState>` with no owner binding.
+//! `token::` / `associated_token` constraints, NOT by `has_one`. And
+//! `UncheckedAccount` / `AccountInfo` are raw/CHECK accounts validated by hand.
+//! Both contain the substring "Account<", so they must be excluded explicitly
+//! or the rule floods audited code with false positives. What remains is the
+//! high-signal case: a mutable *custom* `Account<'info, MyState>` with no
+//! owner binding and no `/// CHECK:` doc.
 
 use super::{looks_like_authority, Context, Rule};
 use crate::finding::{Finding, Severity};
@@ -36,17 +37,27 @@ impl Rule for MissingHasOne {
                 continue;
             }
             for f in &s.fields {
-                let is_typed_account = f.ty_contains("Account<") && !f.ty_contains("AccountInfo");
+                // A *typed* Anchor account: `Account<'info, T>`. `UncheckedAccount`
+                // and `AccountInfo` also contain "Account<", so exclude them.
+                let is_typed_account = f.ty_contains("Account<")
+                    && !f.ty_contains("AccountInfo")
+                    && !f.ty_contains("UncheckedAccount");
                 let is_mut = f.attr_contains("mut");
                 if !is_typed_account || !is_mut {
                     continue;
                 }
+                // A `/// CHECK:` doc means the developer validates it manually.
+                if f.has_check_doc {
+                    continue;
+                }
+                // Token/mint accounts are SPL-validated, not has_one.
                 if f.ty_contains("TokenAccount")
                     || f.ty_contains("Mint")
                     || f.ty_contains("InterfaceAccount")
                 {
                     continue;
                 }
+                // Already bound or constrained?
                 if f.attr_contains("has_one")
                     || f.attr_contains("seeds")
                     || f.attr_contains("token::")
