@@ -46,7 +46,7 @@ repo](https://github.com/coral-xyz/sealevel-attacks).
 ## Install
 
 ```bash
-git clone https://github.com/<you>/solsentry
+git clone https://github.com/mirahahmed3690/solsentry
 cd solsentry
 cargo install --path .
 ```
